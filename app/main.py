@@ -36,7 +36,8 @@ if not API_KEY:
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if request.headers.get("x-api-key") and request.headers.get("x-api-key") == API_KEY:
+        req_key = request.headers.get("x-api-key")
+        if req_key and secrets.compare_digest(req_key, API_KEY):
             return f(*args, **kwargs)
         else:
             return jsonify({"error": "Unauthorized. Please provide a valid 'x-api-key' header."}), 401
@@ -71,36 +72,37 @@ def imgpath(filename):
 
 def save_image_safely(file_storage, filepath, extension):
     if not PILLOW_AVAILABLE or extension.lower() not in ['.jpg', '.jpeg', '.png', '.webp']:
+        # Pillow非対応形式（gif, svg等）はそのまま保存するが、セキュリティ上の理由で十分注意が必要（特にsvgのXSS）
         file_storage.save(filepath)
-        return
+        return True
         
     try:
         # Open directly from memory stream to avoid writing to disk twice
-        image = Image.open(file_storage.stream)
-        
-        # Remove exif metadata if it exists
-        if "exif" in image.info:
-            image.info.pop("exif")
+        # with構文を使用して確実にリソースを解放する
+        with Image.open(file_storage.stream) as image:
+            # Remove exif metadata if it exists
+            if "exif" in image.info:
+                image.info.pop("exif")
+                
+            format_map = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.webp': 'WEBP'}
+            fmt = format_map.get(extension.lower(), 'JPEG')
             
-        format_map = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.webp': 'WEBP'}
-        fmt = format_map.get(extension.lower(), 'JPEG')
-        
-        if fmt == 'JPEG':
-            if image.mode in ('RGBA', 'P', 'LA'):
-                image = image.convert('RGB')
-            try:
-                # Try to preserve the original compression quality to prevent drastic file size changes
-                image.save(filepath, format=fmt, quality='keep')
-            except Exception:
-                # Fallback if keep fails
-                image.save(filepath, format=fmt, quality=95)
-        else:
-            image.save(filepath, format=fmt)
+            if fmt == 'JPEG':
+                if image.mode in ('RGBA', 'P', 'LA'):
+                    image = image.convert('RGB')
+                try:
+                    # Try to preserve the original compression quality to prevent drastic file size changes
+                    image.save(filepath, format=fmt, quality='keep')
+                except Exception:
+                    # Fallback if keep fails
+                    image.save(filepath, format=fmt, quality=95)
+            else:
+                image.save(filepath, format=fmt)
+            return True
     except Exception as e:
-        print(f"Failed to process image with Pillow: {e}")
-        # Fallback: save the original file directly to disk if Pillow processing fails
-        file_storage.stream.seek(0)
-        file_storage.save(filepath)
+        print(f"Malicious or corrupted image file rejected by Pillow: {e}", file=sys.stderr)
+        # 画像としてパースできないファイル（偽装された不正ファイル等）は保存せずに失敗判定を返す
+        return False
 
 @app.route("/api/upload", methods=["POST"])
 @require_api_key
@@ -124,7 +126,9 @@ def upload_file():
         + extension
     )
 
-    save_image_safely(file, imgpath(filename), extension)
+    success = save_image_safely(file, imgpath(filename), extension)
+    if not success:
+        return jsonify({"error": "Invalid or corrupted image file. Cannot process."}), 400
 
     conn = get_db()
     cursor = conn.cursor()
@@ -138,13 +142,23 @@ def upload_file():
 @app.route("/api/search", methods=["GET"])
 def search():
     query = request.args.get("filename", "")
-    
+    try:
+        offset = int(request.args.get("offset", 0))
+    except ValueError:
+        return jsonify({"error": "offset must be an integer value"}), 400
+        
     sql = "SELECT id, filename FROM image_collection"
     params = []
     
     if query:
-        sql += " WHERE filename LIKE ?"
-        params.append(f"%{query}%")
+        # ワイルドカード文字をエスケープして意図しない全件検索等を防ぐ
+        query_escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+        sql += " WHERE filename LIKE ? ESCAPE '\\'"
+        params.append(f"%{query_escaped}%")
+        
+    # 大量のレコード取得によるメモリ枯渇(DoS)を防ぐため、1回の取得を最大100件に制限
+    sql += " ORDER BY id DESC LIMIT 100 OFFSET ?"
+    params.append(offset)
 
     conn = get_db()
     cursor = conn.cursor()

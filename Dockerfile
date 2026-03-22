@@ -8,11 +8,8 @@ WORKDIR /app
 # (※もうpymongoやuWSGIは不要なため、純粋に必要なものだけにします)
 RUN uv pip install --system flask pillow gunicorn
 
-# 現在のディレクトリの内容をコンテナの/appにコピー
-COPY . /app
-
 # デフォルトのポート
-EXPOSE 5050
+EXPOSE 80
 
 # 起動コマンド (環境変数API_KEYは docker run 時に -e API_KEY=xxx として渡す必要があります)
 CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:80", "--workers", "4", "main:app"]

@@ -37,7 +37,6 @@ server {
 
         add_header X-Nginx-Cache $upstream_cache_status;
         proxy_pass    http://imaginary_server/;
-        #proxy_pass    http://imaginary:9000/;
     }
 
     #error_page  404              /404.html;
