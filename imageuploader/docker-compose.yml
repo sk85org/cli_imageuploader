@@ -1,0 +1,32 @@
+version: '3.3'
+
+services:
+  app:
+    build: .
+    restart: always
+    environment:
+      - API_KEY=${API_KEY:-my-super-password}
+    volumes:
+      - ./app:/app/app
+      - ./image:/image
+      - ./db:/db
+
+  imaginary:
+    image: h2non/imaginary:latest
+    restart: always
+    volumes:
+      - ./image:/img
+    environment:
+      PORT: 9000
+    command: -disable-endpoints form,health -mount /img  -enable-url-source -allowed-origins http://localhost
+    deploy:
+      replicas: 3
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - '8587:80'
+    restart: always
+    volumes: 
+      - ./templates:/etc/nginx/templates
+      - ./nginx.conf:/etc/nginx/nginx.conf
