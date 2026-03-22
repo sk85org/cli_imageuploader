@@ -6,7 +6,7 @@ WORKDIR /app
 
 # 依存パッケージをuvの驚異的な速度でシステムにインストール
 # (※もうpymongoやuWSGIは不要なため、純粋に必要なものだけにします)
-RUN uv pip install --system flask pillow
+RUN uv pip install --system flask pillow gunicorn
 
 # 現在のディレクトリの内容をコンテナの/appにコピー
 COPY . /app
@@ -15,4 +15,4 @@ COPY . /app
 EXPOSE 5050
 
 # 起動コマンド (環境変数API_KEYは docker run 時に -e API_KEY=xxx として渡す必要があります)
-CMD ["uv", "run", "flask", "--app", "main.py", "run", "--host=0.0.0.0", "--port=5050"]
+CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:80", "--workers", "4", "main:app"]
