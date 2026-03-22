@@ -14,12 +14,9 @@ except ImportError:
 # Compute absolute project base directory (imageuploader)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Use /img and /db if they exist (e.g. inside Docker), otherwise use local folders
-_default_img = "/images" if os.path.exists("/images") else os.path.join(BASE_DIR, "images")
-UPLOAD_DIST = os.environ.get("UPLOAD_DIST", _default_img)
-
-_default_db = "/db" if os.path.exists("/db") else os.path.join(BASE_DIR, "db")
-DB_DIR = os.environ.get("DB_DIR", _default_db)
+# Use /images and /db if they exist (e.g. inside Docker), otherwise use local folders
+UPLOAD_DIST = "/images" if os.path.exists("/images") else os.path.join(BASE_DIR, "images")
+DB_DIR = "/db" if os.path.exists("/db") else os.path.join(BASE_DIR, "db")
 
 # Save the SQLite DB
 DB_PATH = os.path.join(DB_DIR, "images.db")
