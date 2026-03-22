@@ -1,7 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # アプリケーションとデータのベースディレクトリを作成
-RUN mkdir -p /image /db /app
+RUN mkdir -p /images /db /app
 WORKDIR /app
 
 # 依存パッケージをuvの驚異的な速度でシステムにインストール

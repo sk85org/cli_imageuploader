@@ -15,7 +15,7 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Use /img and /db if they exist (e.g. inside Docker), otherwise use local folders
-_default_img = "/img" if os.path.exists("/img") else os.path.join(BASE_DIR, "img")
+_default_img = "/images" if os.path.exists("/images") else os.path.join(BASE_DIR, "images")
 UPLOAD_DIST = os.environ.get("UPLOAD_DIST", _default_img)
 
 _default_db = "/db" if os.path.exists("/db") else os.path.join(BASE_DIR, "db")

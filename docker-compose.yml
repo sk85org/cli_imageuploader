@@ -7,18 +7,18 @@ services:
     environment:
       - API_KEY=${API_KEY:-my-super-password}
     volumes:
-      - ./app:/app/app
-      - ./image:/image
+      - ./app:/app
+      - ./images:/images
       - ./db:/db
 
   imaginary:
     image: h2non/imaginary:latest
     restart: always
     volumes:
-      - ./image:/img
+      - ./images:/images
     environment:
       PORT: 9000
-    command: -disable-endpoints form,health -mount /img  -enable-url-source -allowed-origins http://localhost
+    command: -disable-endpoints form,health -mount /images  -enable-url-source -allowed-origins http://localhost
     deploy:
       replicas: 3
 
