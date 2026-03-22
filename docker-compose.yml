@@ -24,6 +24,9 @@ services:
 
   nginx:
     image: nginx:latest
+    depends_on:
+      - app
+      - imaginary
     ports:
       - '8587:80'
     restart: always
