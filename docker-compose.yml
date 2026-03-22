@@ -3,7 +3,7 @@ services:
     build: .
     restart: always
     environment:
-      - API_KEY=${API_KEY:-my-super-password}
+      - API_KEY=my-super-password
     volumes:
       - ./app:/app
       - ./images:/images
